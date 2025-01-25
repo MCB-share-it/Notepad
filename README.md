@@ -25,12 +25,12 @@ This project is a recreation of the classic Windows Notepad application using C 
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/notepad-clone.git
+   git clone https://github.com/MCB-share-it/notepad
    ```
 
 2. Navigate to the project directory:
    ```
-   cd notepad-clone
+   cd notepad
    ```
 
 3. Build the project using your preferred method (e.g., MinGW, Microsoft Visual Studio)
