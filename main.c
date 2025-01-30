@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <stdio.h>
 
-#define ID_EDITCHILD 1001 // Identifier for the Edit Control
+#define ID_EDITCHILD 1001 // Identifier for the Edit Control 
 #define ID_SAVE_BUTTON 1002 // Identifier for the Save Button
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
