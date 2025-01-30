@@ -36,6 +36,7 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         );
         break;
     }
+        
     case WM_COMMAND: {
         switch (LOWORD(wParam)) {
         case ID_SAVE_BUTTON: {
