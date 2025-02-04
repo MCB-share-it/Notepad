@@ -61,9 +61,7 @@ Thank you for creating this README.md file for your project. I hope this helps y
 Citations:
 [1] https://github.com/cMardc/Notepad
 [2] https://www.youtube.com/watch?v=QcZKsbgsLa4
-[3] https://medium.com/analytics-vidhya/how-to-create-a-readme-md-file-8fb2e8ce24e3
 [4] https://github.com/Air16/NotepadEx
-[5] https://stackoverflow.com/questions/26444250/how-to-create-a-md-file-under-windows
 [6] https://www.reddit.com/r/programming/comments/cyc8er/part_2_how_to_make_notepad_on_windows_2000_c/
 [7] https://github.com/LinArcX/wmenu/blob/master/README.md
 [8] https://www.youtube.com/watch?v=AYZdnqchUOE
