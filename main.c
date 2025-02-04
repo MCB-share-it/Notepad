@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <stdio.h>
 
-#define ID_EDITCHILD 1001 // Identifier for the Edit Control 
+#define ID_EDITCHILD 1001 // Identifier for the Edit Control
 #define ID_SAVE_BUTTON 1002 // Identifier for the Save Button
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -10,33 +10,69 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
     switch (uMsg) {
     case WM_CREATE: {
+        // Create the Save Button
+        hSaveButton = CreateWindow(
+            "BUTTON",               // Predefined class
+            "Save",                 // Button text
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, // Styles
+            10, 10, 100, 30,         // Position and size of the button
+            hWnd,                   // Parent window handle
+            (HMENU)ID_SAVE_BUTTON,  // Control identifier
+            GetModuleHandle(NULL),  // Handle to the instance
+            NULL                    // Pointer not needed
+        );
+
         // Create the Edit Control
         hEdit = CreateWindowEx(
             0,                     // Extended styles
             "EDIT",                // Predefined Edit Control
             "",                    // Default text
             WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
-            10, 10, 480, 400,      // Position and size of the Edit Control
+            10, 52, 480, 358,      // Adjusted position to make space for the separator line
             hWnd,                  // Parent window handle
             (HMENU)ID_EDITCHILD,   // Control identifier
             GetModuleHandle(NULL), // Handle to the instance
             NULL                   // Pointer not needed
         );
-
-        // Create the Save Button
-        hSaveButton = CreateWindow(
-            "BUTTON",               // Predefined class
-            "Save",                 // Button text
-            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, // Styles
-            10, 420, 100, 30,       // Position and size of the button
-            hWnd,                   // Parent window handle
-            (HMENU)ID_SAVE_BUTTON,  // Control identifier
-            GetModuleHandle(NULL),  // Handle to the instance
-            NULL                    // Pointer not needed
-        );
         break;
     }
-        
+    case WM_SIZE: {
+        // Adjust the size and position of the Save Button and Edit Control
+        int width = LOWORD(lParam);
+        int height = HIWORD(lParam);
+
+        MoveWindow(hSaveButton, 10, 10, 100, 30, TRUE);
+        MoveWindow(hEdit, 10, 52, width - 20, height - 62, TRUE);
+
+        // Force the window to repaint to prevent black areas
+        InvalidateRect(hWnd, NULL, TRUE);
+        break;
+    }
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+
+        // Draw a thin line between the button and the edit control
+        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // Black thin line
+        HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+
+        MoveToEx(hdc, 10, 50, NULL);
+        LineTo(hdc, LOWORD(GetClientRect(hWnd, &ps.rcPaint)), 50);
+
+        SelectObject(hdc, hOldPen);
+        DeleteObject(hPen);
+
+        EndPaint(hWnd, &ps);
+        break;
+    }
+    case WM_ERASEBKGND: {
+        // Handle background erasing to prevent flickering
+        HDC hdc = (HDC)wParam;
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+        return 1; // Indicate that the background has been erased
+    }
     case WM_COMMAND: {
         switch (LOWORD(wParam)) {
         case ID_SAVE_BUTTON: {
@@ -80,6 +116,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     WNDCLASSA wc = { 0 };
     wc.lpfnWndProc = WinProc;
     wc.hInstance = hInstance;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); // Set default background brush
     wc.lpszClassName = "NotepadClass";
 
     RegisterClassA(&wc);
@@ -87,9 +124,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     HWND hWnd = CreateWindowA(
         "NotepadClass",
         "Super Pad",
-        WS_OVERLAPPEDWINDOW,
+        WS_OVERLAPPEDWINDOW, // Ensures the window is resizable
         CW_USEDEFAULT, CW_USEDEFAULT,
-        500, 500, // Adjusted window size
+        500, 500, // Initial window size
         NULL, NULL, hInstance, NULL
     );
 
