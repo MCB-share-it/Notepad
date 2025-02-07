@@ -12,20 +12,20 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     case WM_CREATE: {
         // Create the Save Button
         hSaveButton = CreateWindow(
-            "BUTTON",               // Predefined class
-            "Save",                 // Button text
-            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, // Styles
-            10, 10, 100, 30,         // Position and size of the button
-            hWnd,                   // Parent window handle
-            (HMENU)ID_SAVE_BUTTON,  // Control identifier
-            GetModuleHandle(NULL),  // Handle to the instance
-            NULL                    // Pointer not needed
+            "BUTTON",              
+            "Save",                
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 
+            10, 10, 100, 30,         
+            hWnd,                   
+            (HMENU)ID_SAVE_BUTTON,  
+            GetModuleHandle(NULL), 
+            NULL                   
         );
 
         // Create the Edit Control
         hEdit = CreateWindowEx(
-            0,                     // Extended styles
-            "EDIT",                // Predefined Edit Control
+            0,                     
+            "EDIT",                
             "",                    // Default text
             WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
             10, 52, 480, 358,      // Adjusted position to make space for the separator line
