@@ -1,50 +1,40 @@
 #include <Windows.h>
 #include <stdio.h>
 
-#define ID_EDITCHILD 1001 // Identifier for the Edit Control
-#define ID_SAVE_BUTTON 1002 // Identifier for the Save Button
+#define ID_EDITCHILD 1001
+#define ID_SAVE_BUTTON 1002
+#define ID_OPEN_BUTTON 1003
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static HWND hEdit;       // Handle to the Edit Control
-    static HWND hSaveButton; // Handle to the Save Button
+    static HWND hEdit, hSaveButton, hOpenButton;
 
     switch (uMsg) {
     case WM_CREATE: {
-        // Create the Save Button
         hSaveButton = CreateWindow(
-            "BUTTON",              
-            "Save",                
-            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 
-            10, 10, 100, 30,         
-            hWnd,                   
-            (HMENU)ID_SAVE_BUTTON,  
-            GetModuleHandle(NULL), 
-            NULL                   
+            "BUTTON", "Save File", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+            10, 10, 100, 30, hWnd, (HMENU)ID_SAVE_BUTTON, GetModuleHandle(NULL), NULL
         );
 
-        // Create the Edit Control
+        hOpenButton = CreateWindow(
+            "BUTTON", "Open File", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+            120, 10, 100, 30, hWnd, (HMENU)ID_OPEN_BUTTON, GetModuleHandle(NULL), NULL
+        );
+
         hEdit = CreateWindowEx(
-            0,                     
-            "EDIT",                
-            "",                    // Default text
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
-            10, 52, 480, 358,      // Adjusted position to make space for the separator line
-            hWnd,                  // Parent window handle
-            (HMENU)ID_EDITCHILD,   // Control identifier
-            GetModuleHandle(NULL), // Handle to the instance
-            NULL                   // Pointer not needed
+            0, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL |
+            ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+            10, 52, 480, 358, hWnd, (HMENU)ID_EDITCHILD, GetModuleHandle(NULL), NULL
         );
         break;
     }
     case WM_SIZE: {
-        // Adjust the size and position of the Save Button and Edit Control
         int width = LOWORD(lParam);
         int height = HIWORD(lParam);
 
         MoveWindow(hSaveButton, 10, 10, 100, 30, TRUE);
+        MoveWindow(hOpenButton, 120, 10, 100, 30, TRUE);
         MoveWindow(hEdit, 10, 52, width - 20, height - 62, TRUE);
 
-        // Force the window to repaint to prevent black areas
         InvalidateRect(hWnd, NULL, TRUE);
         break;
     }
@@ -52,8 +42,7 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
 
-        // Draw a thin line between the button and the edit control
-        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // Black thin line
+        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
         HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
 
         MoveToEx(hdc, 10, 50, NULL);
@@ -66,39 +55,83 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         break;
     }
     case WM_ERASEBKGND: {
-        // Handle background erasing to prevent flickering
         HDC hdc = (HDC)wParam;
         RECT rect;
         GetClientRect(hWnd, &rect);
         FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
-        return 1; // Indicate that the background has been erased
+        return 1;
     }
     case WM_COMMAND: {
         switch (LOWORD(wParam)) {
         case ID_SAVE_BUTTON: {
-            // Save button clicked
-            int length = GetWindowTextLength(hEdit) + 1; // Get text length
-            char* buffer = (char*)malloc(length);        // Allocate buffer
-            if (buffer == NULL) {
-                MessageBox(hWnd, "Malloc failed!", "Error", MB_OK | MB_ICONERROR);
-                break;
-            }
-            GetWindowText(hEdit, buffer, length);       // Get the text from the edit control
+            OPENFILENAME ofn;
+            char szFileName[MAX_PATH] = "";
 
-            // Save the text to a file
-            FILE* file = fopen("output.txt", "w");
-            if (file) {
-                fputs(buffer, file);                    // Write buffer to file
-                fclose(file);
-                MessageBox(hWnd, "File saved successfully!", "Success", MB_OK);
-            }
-            else {
-                MessageBox(hWnd, "Failed to save file.", "Error", MB_OK | MB_ICONERROR);
-            }
+            ZeroMemory(&ofn, sizeof(OPENFILENAME));
+            ofn.lStructSize = sizeof(OPENFILENAME);
+            ofn.hwndOwner = hWnd;
+            ofn.lpstrFile = szFileName;
+            ofn.nMaxFile = MAX_PATH;
+            ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+            ofn.nFilterIndex = 1;
+            ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_FILEMUSTEXIST;
+            ofn.lpstrTitle = "Save File";
+            ofn.lpstrDefExt = "txt";
 
-            free(buffer); // Free the allocated buffer
+            if (GetSaveFileName(&ofn)) {
+                int length = GetWindowTextLength(hEdit) + 1;
+                char* buffer = (char*)malloc(length);
+                if (buffer != NULL) {
+                    GetWindowText(hEdit, buffer, length);
+                    FILE* file = fopen(szFileName, "w");
+                    if (file) {
+                        fputs(buffer, file);
+                        fclose(file);
+                        MessageBox(hWnd, "File saved successfully!", "Success", MB_OK);
+                    }
+                    free(buffer);
+                }
+            }
             break;
         }
+
+        case ID_OPEN_BUTTON: {
+            OPENFILENAME ofn;
+            char szFileName[MAX_PATH] = "";
+
+            ZeroMemory(&ofn, sizeof(OPENFILENAME));
+            ofn.lStructSize = sizeof(OPENFILENAME);
+            ofn.hwndOwner = hWnd;
+            ofn.lpstrFile = szFileName;
+            ofn.nMaxFile = MAX_PATH;
+            ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+            ofn.nFilterIndex = 1;
+            ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+            ofn.lpstrTitle = "Open File";
+            ofn.lpstrDefExt = "txt";
+
+            if (GetOpenFileName(&ofn)) {
+                FILE* file = fopen(szFileName, "r");
+                if (file) {
+                    fseek(file, 0, SEEK_END);
+                    long fileSize = ftell(file);
+                    rewind(file);
+
+                    char* buffer = (char*)malloc(fileSize + 1);
+                    if (buffer != NULL) {
+                        fread(buffer, fileSize, 1, file);
+                        buffer[fileSize] = '\0';
+                        fclose(file);
+                        SetWindowText(hEdit, buffer);
+                        free(buffer);
+                    }
+                }
+            }
+            break;
+        }
+
+        default:
+            return DefWindowProc(hWnd, uMsg, wParam, lParam);
         }
         break;
     }
@@ -108,7 +141,6 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     default:
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
-
     return 0;
 }
 
@@ -116,17 +148,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     WNDCLASSA wc = { 0 };
     wc.lpfnWndProc = WinProc;
     wc.hInstance = hInstance;
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); // Set default background brush
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = "NotepadClass";
 
     RegisterClassA(&wc);
 
     HWND hWnd = CreateWindowA(
-        "NotepadClass",
-        "Super Pad",
-        WS_OVERLAPPEDWINDOW, // Ensures the window is resizable
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        500, 500, // Initial window size
+        "NotepadClass", "Super Pad | %", WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 500, 500,
         NULL, NULL, hInstance, NULL
     );
 
@@ -138,6 +167,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
     return msg.wParam;
+}
 }
