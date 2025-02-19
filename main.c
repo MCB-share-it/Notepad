@@ -54,13 +54,7 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         EndPaint(hWnd, &ps);
         break;
     }
-    case WM_ERASEBKGND: {
-        HDC hdc = (HDC)wParam;
-        RECT rect;
-        GetClientRect(hWnd, &rect);
-        FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
-        return 1;
-    }
+    
     case WM_COMMAND: {
         switch (LOWORD(wParam)) {
         case ID_SAVE_BUTTON: {
