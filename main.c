@@ -1,23 +1,76 @@
 #include <Windows.h>
 #include <stdio.h>
 
+HFONT hFont; // Global font handle for the custom font
 // Control identifiers for UI elements
 #define ID_EDITCHILD 1001     // Multiline edit control for text input/display
 #define ID_SAVE_BUTTON 1002   // Button to trigger file save operation
 #define ID_OPEN_BUTTON 1003   // Button to trigger file open operation
 
 /**
- * Window procedure handler for the main application window.
- * Processes all Windows messages and manages UI controls.
+ * Saves the contents of the edit control to a file.
  *
- * @param hWnd   Handle to the current window
- * @param uMsg   Message identifier
- * @param wParam Additional message information
- * @param lParam Additional message information
- * @return LRESULT Response to the message
+ * @param hWnd   Handle to the parent window
+ * @param hEdit  Handle to the edit control containing the text to save
+ * @return      TRUE if save was successful, FALSE otherwise
  */
+void SaveFunction(HWND hWnd, HWND hEdit) {
+    OPENFILENAME ofn = { 0 };
+    char szFileName[MAX_PATH] = "";
+
+    // Initialize OPENFILENAME structure
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = hWnd;
+    ofn.lpstrFile = szFileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+    ofn.lpstrTitle = "Save File";
+    ofn.lpstrDefExt = "txt";
+
+    // Get the text length and allocate buffer
+    int length = GetWindowTextLength(hEdit) + 1;
+    if (length <= 1) {
+        MessageBox(hWnd, "No text to save!", "Save", MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    char* buffer = (char*)malloc(length);
+    if (!buffer) {
+        MessageBox(hWnd, "Memory allocation failed!", "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    // Get the text from edit control
+    GetWindowText(hEdit, buffer, length);
+
+    // Show save file dialog
+    if (!GetSaveFileName(&ofn)) {
+        free(buffer);
+        return;
+    }
+
+    // Save to file
+    FILE* file = fopen(szFileName, "w");
+    if (!file) {
+        MessageBox(hWnd, "Failed to create file! Check permissions.", "Error", MB_OK | MB_ICONERROR);
+        free(buffer);
+        return;
+    }
+
+    // Write the text and close the file
+    fputs(buffer, file);
+    fclose(file);
+
+    // Clean up
+    free(buffer);
+
+    // Show success message
+    MessageBox(hWnd, "File saved successfully!", "Success", MB_OK);
+}
+
 LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    // Static handles to maintain control references across messages
     static HWND hEdit, hSaveButton, hOpenButton;
 
     switch (uMsg) {
@@ -38,6 +91,19 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
             10, 52, 480, 358, hWnd, (HMENU)ID_EDITCHILD, GetModuleHandle(NULL), NULL
         );
+
+        // Set custom font (e.g., Consolas, size 16)
+        LOGFONT lf = { 0 };
+        lf.lfHeight = -16; // Negative for character height
+        lf.lfWeight = FW_NORMAL;
+        strcpy(lf.lfFaceName, "Consolas"); // Change to your preferred font
+        hFont = CreateFontIndirect(&lf);
+
+        // Apply font to the edit control
+        SendMessage(hEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessage(hSaveButton, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessage(hOpenButton, WM_SETFONT, (WPARAM)hFont, TRUE);
+
         break;
     }
     case WM_SIZE: {
@@ -75,7 +141,7 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         DeleteObject(hPen);
 
         EndPaint(hWnd, &ps);
-        break;
+        return 0;
     }
     case WM_ERASEBKGND: {
         // Optimize background erasure
@@ -89,54 +155,15 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // Process control-specific commands
         switch (LOWORD(wParam)) {
         case ID_SAVE_BUTTON: {
-            // Implement file save functionality
-            OPENFILENAME ofn;
-            char szFileName[MAX_PATH] = "";
-
-            // Initialize Open File dialog parameters
-            ZeroMemory(&ofn, sizeof(OPENFILENAME));
-            ofn.lStructSize = sizeof(OPENFILENAME);
-            ofn.hwndOwner = hWnd;
-            ofn.lpstrFile = szFileName;
-            ofn.nMaxFile = MAX_PATH;
-            ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-            ofn.nFilterIndex = 1;
-            ofn.Flags = OFN_OVERWRITEPROMPT;
-            ofn.lpstrTitle = "Save File";
-            ofn.lpstrDefExt = "txt";
-
-            // Handle file save operation
-            if (GetSaveFileName(&ofn)) {
-                int length = GetWindowTextLength(hEdit) + 1;
-                char* buffer = (char*)malloc(length);
-                if (!buffer) {
-                    MessageBox(hWnd, "Memory allocation failed!", "Error", MB_OK | MB_ICONERROR);
-                    break;
-                }
-
-                GetWindowText(hEdit, buffer, length);
-
-                FILE* file = fopen(szFileName, "w");
-                if (file) {
-                    fputs(buffer, file);
-                    fclose(file);
-                    MessageBox(hWnd, "File saved successfully!", "Success", MB_OK);
-                }
-                else {
-                    MessageBox(hWnd, "Failed to create file! Check permissions.", "Error", MB_OK | MB_ICONERROR);
-                }
-
-                free(buffer);
-            }
+            SaveFunction(hWnd, hEdit);
             break;
         }
         case ID_OPEN_BUTTON: {
             // Implement file open functionality
-            OPENFILENAME ofn;
+            OPENFILENAME ofn = { 0 };
             char szFileName[MAX_PATH] = "";
 
             // Initialize Open File dialog parameters
-            ZeroMemory(&ofn, sizeof(OPENFILENAME));
             ofn.lStructSize = sizeof(OPENFILENAME);
             ofn.hwndOwner = hWnd;
             ofn.lpstrFile = szFileName;
@@ -162,8 +189,23 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                         fclose(file);
                         SetWindowText(hEdit, buffer);
                         free(buffer);
+
+                        // Extract just the filename from the full path
+                        char* fileNameOnly = strrchr(szFileName, '\\');
+                        if (fileNameOnly) {
+                            fileNameOnly++; // Skip the backslash
+                        }
+                        else {
+                            fileNameOnly = szFileName; // No path, just file name
+                        }
+
+                        // Create new window title
+                        char newTitle[256];
+                        snprintf(newTitle, sizeof(newTitle), "Super Pad | %s", fileNameOnly);
+                        SetWindowText(hWnd, newTitle);
                     }
                 }
+                fclose(file);
             }
             break;
         }
@@ -173,25 +215,34 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         break;
     }
     case WM_DESTROY:
+        // Check if there's text to save
+        int length = GetWindowTextLength(hEdit);
+        if (length > 0) {
+            int result = MessageBox(
+                hWnd,
+                "Do you want to save before closing the Notepad?",
+                "Save",
+                MB_YESNO | MB_ICONQUESTION
+            );
+
+            if (result == IDYES) {
+                SaveFunction(hWnd, hEdit);
+            }
+        }
+
         // Clean up during window destruction
+        if (hFont) {
+            DeleteObject(hFont);
+        }
         PostQuitMessage(0);
         return 0;
+   
     default:
-        // Handle any unprocessed messages
-        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+       return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
-    return 0;
 }
 
-/**
- * Main entry point for the Windows application.
- *
- * @param hInstance Current instance handle
- * @param hPrevInstance Previous instance handle (unused in Win32)
- * @param lpCmdLine Command line arguments
- * @param nCmdShow Initial window show state
- * @return Exit code for the application
- */
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
     // Register the window class
     WNDCLASSA wc = { 0 };
