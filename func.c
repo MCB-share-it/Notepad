@@ -1,4 +1,4 @@
-void SaveFunction(HWND hWnd, HWND hEdit) {
+oid SaveFunction(HWND hWnd, HWND hEdit) {
     OPENFILENAME ofn = { 0 };
     char szFileName[MAX_PATH] = "";
 
@@ -52,4 +52,54 @@ void SaveFunction(HWND hWnd, HWND hEdit) {
 
     // Show success message
     MessageBox(hWnd, "File saved successfully!", "Success", MB_OK);
+}
+
+
+void OpenFunction(HWND hWnd, HWND hEdit) {
+    OPENFILENAME ofn = { 0 };
+    char szFileName[MAX_PATH] = "";
+
+    // Initialize Open File dialog parameters
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = hWnd;
+    ofn.lpstrFile = szFileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    ofn.lpstrTitle = "Open File";
+    ofn.lpstrDefExt = "txt";
+
+    // Handle file open operation
+    if (GetOpenFileName(&ofn)) {
+        FILE* file = fopen(szFileName, "r");
+        if (file) {
+            fseek(file, 0, SEEK_END);
+            long fileSize = ftell(file);
+            rewind(file);
+
+            char* buffer = (char*)malloc(fileSize + 1);
+            if (buffer) {
+                fread(buffer, fileSize, 1, file);
+                buffer[fileSize] = '\0';
+                fclose(file);  // Correctly close the file here
+                SetWindowText(hEdit, buffer);
+                free(buffer);
+
+                // Extract just the filename from the full path
+                char* fileNameOnly = strrchr(szFileName, '\\');
+                if (fileNameOnly) {
+                    fileNameOnly++; // Skip the backslash
+                }
+                else {
+                    fileNameOnly = szFileName; // No path, just file name
+                }
+
+                // Create new window title
+                char newTitle[256];
+                snprintf(newTitle, sizeof(newTitle), "Super Pad | %s", fileNameOnly);
+                SetWindowText(hWnd, newTitle);
+            }
+        }
+    }
 }
