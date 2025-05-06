@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <stdio.h>
 #include "func.c"
+
 HFONT hFont; // Global font handle for the custom font
 // Control identifiers for UI elements
 #define ID_EDITCHILD 1001     // Multiline edit control for text input/display
