@@ -1,0 +1,5 @@
+#define IDD_CONFIG_DIALOG  200
+#define IDC_CONFIG_EDIT    201
+#define IDC_CONFIG_SAVE    202
+#define IDC_CONFIG_CLOSE   203
+
