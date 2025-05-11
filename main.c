@@ -1,12 +1,19 @@
 #include <Windows.h>
 #include <stdio.h>
 #include "func.c"
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+#include <string.h>
+
 
 HFONT hFont; // Global font handle for the custom font
 // Control identifiers for UI elements
 #define ID_EDITCHILD 1001     // Multiline edit control for text input/display
 #define ID_SAVE_BUTTON 1002   // Button to trigger file save operation
 #define ID_OPEN_BUTTON 1003   // Button to trigger file open operation
+// Includes the lua config
+#define CONFIG_PATH "D:/VSCODE/C/Notepad/config.lua"
 
 /**
  * Saves the contents of the edit control to a file.
@@ -15,6 +22,8 @@ HFONT hFont; // Global font handle for the custom font
  * @param hEdit  Handle to the edit control containing the text to save
  * @return      TRUE if save was successful, FALSE otherwise
  */
+
+
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hEdit, hSaveButton, hOpenButton;
@@ -27,7 +36,7 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             10, 10, 100, 30, hWnd, (HMENU)ID_SAVE_BUTTON, GetModuleHandle(NULL), NULL
         );
 
-        hOpenButton = CreateWindow(
+        hOpenButton = CreateWindow(  
             "BUTTON", "Open File", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
             120, 10, 100, 30, hWnd, (HMENU)ID_OPEN_BUTTON, GetModuleHandle(NULL), NULL
         );
@@ -142,7 +151,51 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 
 
+// Initialize Lua and load configuration
+int InitializeLua(lua_State *L) {
+    // Open Lua libraries
+    luaL_openlibs(L);
+
+    // Try loading the Lua config file
+    if (luaL_dofile(L, CONFIG_PATH) != LUA_OK) {
+        const char *error = lua_tostring(L, -1);
+        MessageBoxA(NULL, error, "Lua Error", MB_ICONWARNING);
+        lua_pop(L, 1); // remove error message from stack
+        return -1; // If error occurs, return
+    }
+
+    // Try fetching the 'config' table from Lua
+    lua_getglobal(L, "config");
+    if (lua_isnil(L, -1)) {
+        MessageBoxA(NULL, "Lua configuration not found!", "Error", MB_ICONERROR);
+        lua_pop(L, 1); // pop the nil value from stack
+        return -1;
+    }
+
+    // Here you can fetch specific properties like background opacity, font size, etc.
+    lua_getfield(L, -1, "background_opacity");
+    if (lua_isnumber(L, -1)) {
+        float backgroundOpacity = lua_tonumber(L, -1);
+        // Apply the configuration to your UI (for example)
+        printf("Background Opacity: %f\n", backgroundOpacity);
+    }
+    lua_pop(L, 1); // pop the value
+
+    // More config parsing goes here...
+
+    return 0;
+}
+
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
+    lua_State *L = luaL_newstate();
+
+    // Initialize Lua and load configuration
+    if (InitializeLua(L) != 0) {
+        // If Lua initialization fails, exit the program
+        return 1;
+    }
+
     // Register the window class
     WNDCLASSA wc = { 0 };
     wc.lpfnWndProc = WinProc;
@@ -169,6 +222,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    // Close the Lua state before exiting
+    lua_close(L);
 
     return msg.wParam;
 }
