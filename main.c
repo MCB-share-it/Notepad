@@ -5,6 +5,9 @@
 #include <lauxlib.h>
 #include <lualib.h>
 #include <string.h>
+#include "ressource.h"
+
+//COMMENTS MADE WITH AI !
 
 
 HFONT hFont; // Global font handle for the custom font
@@ -12,6 +15,8 @@ HFONT hFont; // Global font handle for the custom font
 #define ID_EDITCHILD 1001     // Multiline edit control for text input/display
 #define ID_SAVE_BUTTON 1002   // Button to trigger file save operation
 #define ID_OPEN_BUTTON 1003   // Button to trigger file open operation
+#define ID_CONFIG_BUTTON 1004 // Button to show the lua config
+
 // Includes the lua config
 #define CONFIG_PATH "D:/VSCODE/C/Notepad/config.lua"
 
@@ -23,10 +28,12 @@ HFONT hFont; // Global font handle for the custom font
  * @return      TRUE if save was successful, FALSE otherwise
  */
 
+lua_State *gLua = NULL; // Global Lua state
 
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static HWND hEdit, hSaveButton, hOpenButton;
+    static HWND hEdit, hSaveButton, hOpenButton, hConfigButton;
+
 
     switch (uMsg) {
     case WM_CREATE: {
@@ -39,6 +46,11 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         hOpenButton = CreateWindow(  
             "BUTTON", "Open File", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
             120, 10, 100, 30, hWnd, (HMENU)ID_OPEN_BUTTON, GetModuleHandle(NULL), NULL
+        );
+
+        hConfigButton = CreateWindow(
+            "BUTTON", "Config", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+            230, 10, 100, 30, hWnd, (HMENU)ID_CONFIG_BUTTON, GetModuleHandle(NULL), NULL
         );
 
         hEdit = CreateWindowEx(
@@ -58,6 +70,7 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         SendMessage(hEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessage(hSaveButton, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessage(hOpenButton, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessage(hConfigButton, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         break;
     }
@@ -117,6 +130,11 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             OpenFunction(hWnd,hEdit);
             break;
         }
+        case ID_CONFIG_BUTTON:
+            ShowConfigDialog(hWnd); 
+            break;
+
+
         default:
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
         }
@@ -152,49 +170,25 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 
 // Initialize Lua and load configuration
-int InitializeLua(lua_State *L) {
-    // Open Lua libraries
-    luaL_openlibs(L);
-
-    // Try loading the Lua config file
-    if (luaL_dofile(L, CONFIG_PATH) != LUA_OK) {
-        const char *error = lua_tostring(L, -1);
-        MessageBoxA(NULL, error, "Lua Error", MB_ICONWARNING);
-        lua_pop(L, 1); // remove error message from stack
-        return -1; // If error occurs, return
+void InitializeLua(void) {
+    gLua = luaL_newstate();
+    if (gLua == NULL) {
+        MessageBox(NULL, "Failed to initialize Lua", "Error", MB_ICONERROR);
     }
-
-    // Try fetching the 'config' table from Lua
-    lua_getglobal(L, "config");
-    if (lua_isnil(L, -1)) {
-        MessageBoxA(NULL, "Lua configuration not found!", "Error", MB_ICONERROR);
-        lua_pop(L, 1); // pop the nil value from stack
-        return -1;
-    }
-
-    // Here you can fetch specific properties like background opacity, font size, etc.
-    lua_getfield(L, -1, "background_opacity");
-    if (lua_isnumber(L, -1)) {
-        float backgroundOpacity = lua_tonumber(L, -1);
-        // Apply the configuration to your UI (for example)
-        printf("Background Opacity: %f\n", backgroundOpacity);
-    }
-    lua_pop(L, 1); // pop the value
-
-    // More config parsing goes here...
-
-    return 0;
+    luaL_openlibs(gLua);
 }
 
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
-    lua_State *L = luaL_newstate();
-
-    // Initialize Lua and load configuration
-    if (InitializeLua(L) != 0) {
-        // If Lua initialization fails, exit the program
-        return 1;
+void CleanupLua(void) {
+    if (gLua) {
+        lua_close(gLua);        // Close the Lua state
+        gLua = NULL;
     }
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
+    gLua = luaL_newstate();
+
 
     // Register the window class
     WNDCLASSA wc = { 0 };
@@ -224,7 +218,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 
     // Close the Lua state before exiting
-    lua_close(L);
+    lua_close(gLua);
 
     return msg.wParam;
 }
+
